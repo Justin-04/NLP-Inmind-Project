@@ -1,0 +1,84 @@
+## SMS Spam Classification
+=========================================================================
+# Preprocessing & TF-IDF Baseline
+---------------------------------
+Target Encoding
+
+The original labels were converted into numerical values:
+where ham : 0   spam: 1
+
+
+# Text Preprocessing
+--------------------
+The SMS messages were cleaned before feature extraction. The preprocessing pipeline included:
+
+Converting text to lowercase
+Handling missing values
+Removing unnecessary characters
+Tokenizing the messages
+Removing stopwords
+Preserving negation words such as not, no, and nor
+Applying lemmatization
+Removing empty messages
+Removing duplicate processed messages
+
+The final processed text was stored in the lemmatized_text column.
+
+# Dataset Splitting
+-------------------
+
+The dataset was divided into:
+Training set —> used to fit the models (70%)
+Validation set —> used for hyperparameter tuning and model selection(15%)
+Test set —> kept unchanged for final evaluation
+Stratified splitting was used to preserve the class distribution in each subset.(15%)
+
+# Handling Class Imbalance
+--------------------------
+--> The original dataset contained more ham messages than spam messages.
+Random undersampling was applied only to the "training set".
+--> The validation and test sets were not balanced, so their distributions remained representative of real-world data.
+
+# TF-IDF with Logistic Regression
+---------------------------------
+TF-IDF was used with Logistic Regression as the classical baseline model.
+Logistic Regression learns one coefficient for every TF-IDF feature.
+--> A positive coefficient pushes the prediction toward spam.
+--> A negative coefficient pushes the prediction toward ham.
+
+# Experimental TF-IDF RNN
+-------------------------
+
+RNN models expect input with three dimensions:
+
+(batch size, sequence length, input size)
+
+Standard TF-IDF produces a two-dimensional matrix:
+
+(samples, TF-IDF features)
+
+For an additional experiment, the TF-IDF matrices were reshaped into:
+
+(samples, TF-IDF features, 1)
+
+## The extra third dimension does not add new information, it only makes 
+------------------------------------------------------------------------
+# each TF-IDF feature appear as one artificial sequence step. 
+-------------------------------------------------------------
+
+The RNN therefore processes:
+
+TF-IDF feature 1 → TF-IDF feature 2 → TF-IDF feature 3 → ...
+
+This is not the original word order of the message.
+
+# TF-IDF RNN Limitation
+-----------------------
+
+The TF-IDF RNN failed to learn a useful separation between ham and spam and collapsed into predicting only one class.
+This occurred because:
+1 TF-IDF does not preserve original word order.
+2 The artificial sequence represents vocabulary columns instead of token positions.
+3 The sequence is extremely long and sparse.
+4 Most TF-IDF values are zero.
+5 A simple RNN may suffer from vanishing gradients.
