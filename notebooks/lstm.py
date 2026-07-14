@@ -39,9 +39,12 @@ class LSTM(nn.Module):
         if lengths is not None:
             packed = pack_padded_sequence(embedded, lengths.cpu(), batch_first=True, enforce_sorted=False)
             _, (hn, _) = self.lstm(packed)
-            last_time_step = hn[-1]
         else:
             _, (hn, _) = self.lstm(embedded)
+            
+        if self.lstm.bidirectional:
+            last_time_step = torch.cat((hn[-2], hn[-1]), dim=-1)
+        else:
             last_time_step = hn[-1]
 
         # Final prediction score

@@ -8,7 +8,7 @@ from gru import GRU
 from evaluation import evaluate_model, find_best_threshold, plot_loss_curves, perform_error_analysis
 
 # Hyperparameters
-EPOCHS = 3
+EPOCHS = 10
 LEARNING_RATE = 0.001
 BATCH_SIZE = 32
 HIDDEN_SIZE = 64
@@ -16,6 +16,8 @@ NUM_LAYERS = 1
 BIDIRECTIONAL = False
 DROPOUT = 0.0
 FINE_TUNE_EMBEDDINGS = True
+PATIENCE = 3
+
 
 SEED = 42
 torch.manual_seed(SEED)
@@ -33,7 +35,8 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 train_path = os.path.join(script_dir, "..", "data", "train_balanced.csv")
 val_path = os.path.join(script_dir, "..", "data", "validation.csv")
 test_path = os.path.join(script_dir, "..", "data", "test.csv")
-w2v_path = r"C:\Users\MA21\Documents\nlp_data\GoogleNews-vectors-negative300.bin.gz"
+#w2v_path = r"C:\Users\MA21\Documents\nlp_data\GoogleNews-vectors-negative300.bin.gz"
+w2v_path = "data/GoogleNews-vectors-negative300.bin.gz"
 
 train_df, val_df, test_df = load_data(train_path, val_path, test_path)
 vocab = build_vocab(train_df["lemmatized_text"])
@@ -79,6 +82,9 @@ def train_and_evaluate(model, model_name):
     print(f"\n Training: {model_name}\n")
     model.to(device)
     history = {'train_loss': [], 'val_loss': []}
+    
+    best_val_loss = float('inf')
+    patience_counter = 0
 
     for epoch in range(EPOCHS):
         model.train()
@@ -107,6 +113,20 @@ def train_and_evaluate(model, model_name):
         history['train_loss'].append(avg_train_loss)
         history['val_loss'].append(avg_val_loss)
 
+        # Early Stopping Logic
+        if avg_val_loss < best_val_loss:
+            best_val_loss = avg_val_loss
+            patience_counter = 0
+            # Save the best weights found so far
+            torch.save(model.state_dict(), os.path.join(save_path, "model.pth"))
+        else:
+            patience_counter += 1
+            print(f"Early Stopping Counter: {patience_counter} / {PATIENCE}")
+            if patience_counter >= PATIENCE:
+                print("Early stopping triggered")
+                model.load_state_dict(torch.load(os.path.join(save_path, "model.pth")))
+                break
+
     print("\n Training done")
     plot_loss_curves(history, save_path=save_path)
 
@@ -130,8 +150,6 @@ def train_and_evaluate(model, model_name):
     }
     with open(os.path.join(save_path, "metrics.json"), "w") as f:
         json.dump(metrics, f, indent=4)
-        
-    torch.save(model.state_dict(), os.path.join(save_path, "model.pth"))
     print(f"\n Logs and results saved to: {save_path}")
 
 # RNN
@@ -140,7 +158,7 @@ rnn_model = RNN(
     num_layers=NUM_LAYERS, bidirectional=BIDIRECTIONAL, dropout=DROPOUT,
     pretrained_weights=pretrained_weights, fine_tune=FINE_TUNE_EMBEDDINGS
 )
-#train_and_evaluate(rnn_model, "RNN Baseline")
+#train_and_evaluate(rnn_model, "RNN Tuning2")
 
 
 # LSTM
@@ -149,7 +167,7 @@ lstm_model = LSTM(
     num_layers=NUM_LAYERS, bidirectional=BIDIRECTIONAL, dropout=DROPOUT,
     pretrained_weights=pretrained_weights, fine_tune=FINE_TUNE_EMBEDDINGS
 )
-train_and_evaluate(lstm_model, "LSTM Model")
+#train_and_evaluate(lstm_model, "LSTM Bidirectional Tuning2")
 
 
 # GRU
@@ -158,4 +176,4 @@ gru_model = GRU(
     num_layers=NUM_LAYERS, bidirectional=BIDIRECTIONAL, dropout=DROPOUT,
     pretrained_weights=pretrained_weights, fine_tune=FINE_TUNE_EMBEDDINGS
 )
-#train_and_evaluate(gru_model, "GRU Model")
+train_and_evaluate(gru_model, "GRU Tuning2")

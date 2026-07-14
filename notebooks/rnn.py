@@ -41,9 +41,12 @@ class RNN(nn.Module):
         if lengths is not None:
             packed = pack_padded_sequence(embedded, lengths.cpu(), batch_first=True, enforce_sorted=False)
             _, hn = self.rnn(packed)
-            last_time_step = hn[-1]
         else:
             _, hn = self.rnn(embedded)
+            
+        if self.rnn.bidirectional:
+            last_time_step = torch.cat((hn[-2], hn[-1]), dim=-1)
+        else:
             last_time_step = hn[-1]
 
         # Pass the final state to the fully connected layer to get a raw score

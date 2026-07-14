@@ -82,3 +82,86 @@ This occurred because:
 3 The sequence is extremely long and sparse.
 4 Most TF-IDF values are zero.
 5 A simple RNN may suffer from vanishing gradients.
+
+# Deep Learning with Word2Vec
+-----------------------------
+We ran a list of tests using three different models: Vanilla RNN, LSTM, and GRU.
+Instead of using TF-IDF we used pre-trained Google News Word2Vec embeddings (300 dimensions) so the models could actually understand semantic meaning. 
+
+# Part 1: The Vanilla RNN
+-------------------------
+1 Simple RNN Baseline (1 Layer, 32 Hidden, Frozen Embeddings):
+--> Scored 83.15% F1. We froze the embeddings to see how well the raw structure works. It did okay but it forgets things quickly.
+
+2 RNN Tuning 1 (2 Layers, 32 Hidden, 0.3 Dropout, Frozen):
+--> Scored 78.26% F1. Because standard RNNs don't have memory gates making them deeper caused the "vanishing gradient" problem and it couldn't learn at all.
+
+3 RNN Tuning 2 (1 Layer, 64 Hidden, 0.0 Dropout, Fine-Tuned):
+--> Scored 91.46% F1. To fix the vanishing gradients we went back to 1 layer but made it wider (64 hidden) and let the model update the embeddings. This worked well.
+
+# Part 2: Advanced Architectures (LSTM)
+---------------------------------------
+1 Baseline (1 Layer, 32 Hidden, Frozen):
+--> Scored 83.70%. Because of its internal "memory gates" it immediately beat the Vanilla RNN.
+2 Tuning 1 (2 Layers, 32 Hidden, 0.3 Dropout, Fine-Tuned):
+--> Scored 91.33%. 
+3 Tuning 2 (1 Layer, 64 Hidden, 0.0 Dropout, Fine-Tuned):
+--> Scored 93.33%. It handled the wider 1-layer layout well improving on the 2 layers architecture.
+
+# Part 3: Advanced Architectures (GRU)
+--------------------------------------
+1 Baseline (1 Layer, 32 Hidden, Frozen):
+--> Scored 84.75%.
+2 Tuning 1 (2 Layers, 32 Hidden, 0.3 Dropout, Fine-Tuned):
+--> Scored 95.29%. Its simpler gate design made it much easier to optimize with the Word2Vec embeddings compared to the heavier LSTM.
+3 Tuning 2 (1 Layer, 64 Hidden, 0.0 Dropout, Fine-Tuned):
+--> Dropped to 91.01%. Showing the Unidirectional GRU strongly prefers the 2-layer setup.
+
+# Part 4: Bidirectional Sequence Modeling (LSTM)
+------------------------------------------------
+We let the models read the text forwards and backwards simultaneously to get more context.
+1 Baseline (1 Layer, 32 Hidden, Frozen):
+--> Scored 85.42%. Reading in both directions definitely helped the baseline.
+2 Tuning 1 (2 Layers, 32 Hidden, 0.3 Dropout, Fine-Tuned):
+--> Scored 94.74%. It handled the extreme complexity of bidirectionality and 2 layers perfectly.
+3 Tuning 2 (1 Layer, 64 Hidden, 0.0 Dropout, Fine-Tuned):
+--> Dropped to 91.66%. Performance went down compared to the 2 layers architecture.
+
+# Part 5: Bidirectional Sequence Modeling (GRU)
+-----------------------------------------------
+1 Baseline (1 Layer, 32 Hidden, Frozen):
+--> Scored 86.81%.
+2 Tuning 1 (2 Layers, 32 Hidden, 0.3 Dropout, Fine-Tuned):
+--> Crashed to 88.30%. Because 2 layers + bidirectionality + fine-tuning created too many parameters for our dataset, causing it to overfit heavily.
+3 Tuning 2 (1 Layer, 64 Hidden, 0.0 Dropout, Fine-Tuned):
+--> Jumped to 94.67%. Making it wider and shallower (1 layer, 64 hidden) completely fixed the overfitting issue from the 2 layers architecture.
+
+# Final Results Table
+---------------------
+| Architecture | Bi-dir | Layers | Hidden | Embeddings | F1-Score | Status             |
+| :--- | :---: | :---: | :---: | :---: | :---: | :--- |
+| Simple RNN   | No     | 1      | 32     | Frozen     | 83.15%   | Initial Baseline   |
+| Simple RNN   | No     | 2      | 32     | Frozen     | 78.26%   | Vanishing Grads    |
+| Simple RNN   | No     | 1      | 64     | Fine-Tuned | 91.46%   | Optimal RNN        |
+| LSTM         | No     | 1      | 32     | Frozen     | 83.70%   | Baseline           |
+| LSTM         | No     | 2      | 32     | Fine-Tuned | 91.33%   | Depth focus        |
+| LSTM         | No     | 1      | 64     | Fine-Tuned | 93.33%   | Width focus        |
+| LSTM         | Yes    | 1      | 32     | Frozen     | 85.42%   | Baseline           |
+| LSTM         | Yes    | 2      | 32     | Fine-Tuned | 94.74%   | Optimal Bi-LSTM    |
+| LSTM         | Yes    | 1      | 64     | Fine-Tuned | 91.66%   | Width focus        |
+| GRU          | No     | 1      | 32     | Frozen     | 84.75%   | Baseline           |
+| GRU          | No     | 2      | 32     | Fine-Tuned | 95.29%   | OVERALL WINNER     |
+| GRU          | No     | 1      | 64     | Fine-Tuned | 91.01%   | Width focus        |
+| GRU          | Yes    | 1      | 32     | Frozen     | 86.81%   | Baseline           |
+| GRU          | Yes    | 2      | 32     | Fine-Tuned | 88.30%   | Overfit            |
+| GRU          | Yes    | 1      | 64     | Fine-Tuned | 94.67%   | Optimal Bi-GRU     |
+
+# Conclusion
+------------
+The absolute best model was the Unidirectional GRU with:
+--> 2 Layers
+--> 32 Hidden Units
+--> 0.3 Dropout
+--> Fine-Tuned Embeddings
+
+It hit a 95.29% F1-Score. It worked the best because its simple gate setup was perfectly balanced to learn the Word2Vec embeddings without getting too complicated and memorizing the training data.

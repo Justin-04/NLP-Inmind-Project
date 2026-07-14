@@ -39,9 +39,12 @@ class GRU(nn.Module):
         if lengths is not None:
             packed = pack_padded_sequence(embedded, lengths.cpu(), batch_first=True, enforce_sorted=False)
             _, hn = self.gru(packed)
-            last_time_step = hn[-1]
         else:
             _, hn = self.gru(embedded)
+            
+        if self.gru.bidirectional:
+            last_time_step = torch.cat((hn[-2], hn[-1]), dim=-1)
+        else:
             last_time_step = hn[-1]
 
         # Output logits
